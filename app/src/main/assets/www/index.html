@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#111318">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Neon Strike 2.0</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./public/vendor/three.module.js",
+        "three/addons/": "./public/vendor/addons/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <canvas id="game-canvas"></canvas>
+
+    <div id="hud" class="hud hidden">
+      <div id="damage-vignette" class="damage-vignette" aria-hidden="true"></div>
+      <div id="hitmarker" class="hitmarker" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+
+      <div class="hud-top">
+        <div class="hud-top-left">
+          <div class="brand">
+            <span class="brand-title">NEON STRIKE 2.0</span>
+            <span class="brand-sub">Manhattan Quarantine Zone</span>
+          </div>
+          <div class="hud-minimap-wrap">
+            <canvas id="hud-minimap" class="hud-minimap" width="160" height="160" aria-hidden="true"></canvas>
+            <div class="hud-minimap-label">RADAR</div>
+          </div>
+        </div>
+
+        <div class="hud-top-right">
+          <div class="hud-vitals">
+            <div class="health-bar" id="health-bar"><div class="health-fill" id="health-fill"></div><span class="health-text" id="health-text">100 HP</span></div>
+            <div class="survival-bars" id="survival-bars">
+              <div class="sv-bar"><span class="sv-label">FOME</span><div class="sv-track"><div class="sv-fill" id="hunger-fill"></div></div><span class="sv-val" id="hunger-val">100</span></div>
+              <div class="sv-bar"><span class="sv-label">SEDE</span><div class="sv-track"><div class="sv-fill" id="thirst-fill"></div></div><span class="sv-val" id="thirst-val">100</span></div>
+              <div class="sv-bar"><span class="sv-label">ENERG</span><div class="sv-track"><div class="sv-fill" id="energy-fill"></div></div><span class="sv-val" id="energy-val">100</span></div>
+              <div class="sv-bar"><span class="sv-label">STA</span><div class="sv-track"><div class="sv-fill" id="stamina-fill"></div></div><span class="sv-val" id="stamina-val">100</span></div>
+            </div>
+          </div>
+          <div class="hud-quick">
+            <button class="status-pill hud-btn" id="mission-btn" type="button">MISSÕES</button>
+            <button class="status-pill hud-btn" id="map-btn" type="button">MAPA</button>
+            <button class="status-pill hud-btn" id="char-btn" type="button">PERS</button>
+            <button class="status-pill hud-btn" id="audio-btn" type="button">AUDIO</button>
+            <button class="status-pill hud-btn" id="quality-btn" type="button">QUALIDADE: MED</button>
+            <div class="status-pill" id="status-pill">INICIALIZANDO</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hud-center-right">
+        <div class="hud-weapon" id="weapon-panel">
+          <div class="hud-weapon-name" id="equip-pill">Cano de Ferro</div>
+          <div class="hud-weapon-meta">
+            <span id="weapon-type">Corpo a corpo</span>
+            <span id="ammo-pill">SEM MUNIÇÃO</span>
+          </div>
+          <div class="hud-special-row">
+            <span class="hud-special-label">ESPECIAL</span>
+            <div class="hud-special-track"><div class="hud-special-fill" id="special-fill"></div></div>
+            <span class="hud-special-text" id="special-pill">PRONTO</span>
+          </div>
+        </div>
+        <div class="hud-threat hidden" id="threat-indicator">AMEAÇA DETECTADA</div>
+        <div class="stealth-indicator hidden" id="stealth-indicator"></div>
+      </div>
+
+      <div class="hud-bottom">
+        <div id="hud-notifications" class="hud-notifications" aria-live="polite"></div>
+        <div class="objective-hud hidden" id="objective-hud"></div>
+        <div class="vehicle-hud hidden" id="vehicle-hud"></div>
+        <div class="interact-prompt hidden" id="interact-prompt"></div>
+        <div id="hud-quickbar" class="hud-quickbar"></div>
+        <div class="hint" id="desktop-hint">WASD mover · Shift correr · Mouse câmera · Espaço pular · E interagir · I inventário · M missões · N mapa · F/clique ataque · Q especial · 1-4 acesso rápido</div>
+      </div>
+    </div>
+
+    <div id="touch-controls" class="touch-controls hidden" aria-hidden="true">
+      <div class="joystick-zone" id="joystick-zone">
+        <div class="joystick-base" id="joystick-base">
+          <div class="joystick-knob" id="joystick-knob"></div>
+        </div>
+      </div>
+      <div class="touch-actions">
+        <button class="touch-btn touch-btn-small" id="btn-inv" type="button">INV</button>
+        <button class="touch-btn touch-btn-small" id="btn-mission" type="button">LOG</button>
+        <button class="touch-btn touch-btn-small" id="btn-char" type="button">PERS</button>
+        <button class="touch-btn" id="btn-interact" type="button">USE</button>
+        <button class="touch-btn" id="btn-atk" type="button">ATK</button>
+        <button class="touch-btn touch-btn-small" id="btn-special" type="button">SP</button>
+        <button class="touch-btn touch-btn-small" id="btn-reload" type="button">REL</button>
+        <button class="touch-btn touch-btn-small" id="btn-cycle" type="button">ARMA</button>
+        <button class="touch-btn" id="btn-crouch" type="button">AGACH</button>
+        <button class="touch-btn" id="btn-run" type="button">RUN</button>
+        <button class="touch-btn touch-btn-jump" id="btn-jump" type="button">JUMP</button>
+      </div>
+      <div class="look-zone" id="look-zone"></div>
+    </div>
+
+    <div id="vehicle-controls" class="vehicle-controls hidden" aria-hidden="true">
+      <div class="vehicle-steer">
+        <button class="touch-btn vehicle-btn" id="veh-left" type="button">◀</button>
+        <button class="touch-btn vehicle-btn" id="veh-right" type="button">▶</button>
+      </div>
+      <div class="vehicle-pedals">
+        <button class="touch-btn vehicle-btn" id="veh-brake" type="button">FREIO/RÉ</button>
+        <button class="touch-btn vehicle-btn vehicle-accel" id="veh-accel" type="button">ACEL</button>
+      </div>
+      <button class="touch-btn vehicle-btn vehicle-exit" id="veh-exit" type="button">SAIR</button>
+    </div>
+
+    <div id="inventory-overlay" class="inventory-overlay hidden" aria-hidden="true">
+      <div class="inventory-panel inventory-panel-v2">
+        <div class="inventory-header">
+          <div>
+            <div class="inventory-kicker">SOBREVIVÊNCIA</div>
+            <h2>Inventário</h2>
+          </div>
+          <button class="inv-close" id="inv-close" type="button">FECHAR</button>
+        </div>
+        <div class="inventory-tabs">
+          <button class="inv-tab active" id="inv-tab-items" type="button">ITENS</button>
+          <button class="inv-tab" id="inv-tab-craft" type="button">FABRICAR</button>
+        </div>
+        <div class="inventory-body" id="inventory-body-items">
+          <div class="inv-left">
+            <div class="inv-equip-row" id="inv-equip-row"></div>
+            <div class="inv-cats" id="inv-cats"></div>
+            <div class="inventory-grid" id="inventory-grid"></div>
+            <div class="inv-quickslots" id="inv-quickslots"></div>
+          </div>
+          <div class="inventory-detail" id="inventory-detail"><div class="detail-empty">Selecione um item</div></div>
+        </div>
+        <div class="inventory-body hidden" id="inventory-body-craft">
+          <div class="craft-list" id="craft-list"></div>
+          <div class="inventory-detail" id="craft-detail"><div class="detail-empty">Selecione uma receita</div></div>
+        </div>
+        <div class="inventory-footer">
+          <span id="inventory-count">0 itens</span>
+          <span id="inventory-weight">Peso: 0/0</span>
+          <span class="inventory-hint">Arraste/Toque: mover · Dividir/Descartar no detalhe · 1-4 acesso rápido</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="shelter-overlay" class="inventory-overlay hidden" aria-hidden="true">
+      <div class="inventory-panel shelter-panel">
+        <div class="inventory-header">
+          <div>
+            <div class="inventory-kicker" id="shelter-subtitle">ABRIGO</div>
+            <h2 id="shelter-title">Abrigo</h2>
+          </div>
+          <button class="inv-close" id="shelter-close" type="button">FECHAR</button>
+        </div>
+        <div class="inventory-tabs">
+          <button class="inv-tab active" id="shelter-tab-build" type="button">CONSTRUÇÃO</button>
+          <button class="inv-tab" id="shelter-tab-storage" type="button">ARMAZENAMENTO</button>
+        </div>
+        <div class="inventory-body shelter-body">
+          <div class="shelter-list" id="shelter-list"></div>
+          <div class="inventory-detail" id="shelter-detail"><div class="detail-empty">Selecione uma estrutura.</div></div>
+        </div>
+        <div class="inventory-footer">
+          <span id="shelter-status">-</span>
+          <span id="shelter-msg" class="trade-msg"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="trade-overlay" class="inventory-overlay hidden" aria-hidden="true">
+      <div class="inventory-panel trade-panel">
+        <div class="inventory-header">
+          <div>
+            <div class="inventory-kicker" id="trade-subtitle">COMERCIANTE</div>
+            <h2 id="trade-title">Comércio</h2>
+          </div>
+          <button class="inv-close" id="trade-close" type="button">FECHAR</button>
+        </div>
+        <div class="inventory-tabs">
+          <button class="inv-tab active" id="trade-tab-buy" type="button">COMPRAR</button>
+          <button class="inv-tab" id="trade-tab-sell" type="button">VENDER</button>
+          <button class="inv-tab" id="trade-tab-history" type="button">HISTÓRICO</button>
+        </div>
+        <div class="inventory-body trade-body">
+          <div class="trade-list" id="trade-list"></div>
+          <div class="inventory-detail" id="trade-detail"><div class="detail-empty">Selecione um item.</div></div>
+        </div>
+        <div class="inventory-footer">
+          <span id="trade-balance">Saldo: 0 CR</span>
+          <span id="trade-msg" class="trade-msg"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="mission-overlay" class="inventory-overlay hidden" aria-hidden="true">
+      <div class="inventory-panel mission-panel">
+        <div class="inventory-header">
+          <div>
+            <div class="inventory-kicker">DIÁRIO</div>
+            <h2>Missões</h2>
+          </div>
+          <button class="inv-close" id="mission-close" type="button">FECHAR</button>
+        </div>
+        <div class="inventory-body mission-body">
+          <div class="mission-list" id="mission-list"></div>
+          <div class="inventory-detail" id="mission-detail">
+            <div class="detail-empty">Selecione uma missão</div>
+          </div>
+        </div>
+        <div class="inventory-footer">
+          <span>Manhattan em quarentena</span>
+          <span class="inventory-hint">Acompanhe seus objetivos para sobreviver</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="map-overlay" class="inventory-overlay hidden" aria-hidden="true">
+      <div class="inventory-panel map-panel">
+        <div class="inventory-header">
+          <div>
+            <div class="inventory-kicker">NAVEGAÇÃO</div>
+            <h2>Mapa de Manhattan</h2>
+          </div>
+          <button class="inv-close" id="map-close" type="button">FECHAR</button>
+        </div>
+        <div class="map-body">
+          <canvas id="map-canvas"></canvas>
+        </div>
+        <div class="inventory-footer">
+          <span>Arraste para mover · Scroll/pinch para zoom</span>
+          <span class="inventory-hint">POIs descobertos, missão ativa e sua posição</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="dialog-overlay" class="inventory-overlay hidden" aria-hidden="true">
+      <div class="inventory-panel dialog-panel">
+        <div class="inventory-header">
+          <div>
+            <div class="inventory-kicker" id="dialog-role">SOBREVIVENTE</div>
+            <h2 id="dialog-name">NPC</h2>
+          </div>
+          <button class="inv-close" id="dialog-close" type="button">FECHAR</button>
+        </div>
+        <div class="dialog-body">
+          <div class="dialog-text" id="dialog-text"></div>
+          <div class="dialog-choices" id="dialog-choices"></div>
+        </div>
+        <div class="inventory-footer">
+          <span id="dialog-trust">Confiança: -</span>
+          <span class="inventory-hint">Escolha uma resposta</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="char-overlay" class="inventory-overlay hidden" aria-hidden="true">
+      <div class="inventory-panel char-panel">
+        <div class="inventory-header">
+          <div>
+            <div class="inventory-kicker">PROGRESSÃO</div>
+            <h2>Personagem</h2>
+          </div>
+          <button class="inv-close" id="char-close" type="button">FECHAR</button>
+        </div>
+        <div class="char-summary" id="char-summary"></div>
+        <div class="char-body" id="char-body"></div>
+        <div class="inventory-footer">
+          <span id="char-points">Pontos: 0</span>
+          <span class="inventory-hint">Desbloqueie habilidades com pontos</span>
+        </div>
+      </div>
+    </div>
+
+
+    <div id="audio-overlay" class="inventory-overlay hidden" aria-hidden="true">
+      <div class="inventory-panel audio-panel">
+        <div class="inventory-header">
+          <div><div class="inventory-kicker">CONFIGURAÇÕES</div><h2>Áudio</h2></div>
+          <button class="inv-close" id="audio-close" type="button">FECHAR</button>
+        </div>
+        <div class="audio-body">
+          <div class="audio-row"><label>Volume geral</label><input type="range" id="aud-master" min="0" max="100" value="80"><button class="inv-action audio-mute" data-mute="muteMaster" type="button">Mudo</button></div>
+          <div class="audio-row"><label>Música</label><input type="range" id="aud-music" min="0" max="100" value="55"><button class="inv-action audio-mute" data-mute="muteMusic" type="button">Mudo</button></div>
+          <div class="audio-row"><label>Efeitos sonoros</label><input type="range" id="aud-sfx" min="0" max="100" value="80"><button class="inv-action audio-mute" data-mute="muteSfx" type="button">Mudo</button></div>
+          <div class="audio-row"><label>Ambiente</label><input type="range" id="aud-ambient" min="0" max="100" value="65"><button class="inv-action audio-mute" data-mute="muteAmbient" type="button">Mudo</button></div>
+          <div class="audio-row"><label>Personagens</label><input type="range" id="aud-voice" min="0" max="100" value="80"><button class="inv-action audio-mute" data-mute="muteVoice" type="button">Mudo</button></div>
+        </div>
+        <div class="inventory-footer"><span id="audio-status">Preferências salvas automaticamente</span><span class="inventory-hint">Ajuste por categoria</span></div>
+      </div>
+    </div>
+    <div id="toast" class="toast hidden"></div>
+
+    <div id="main-menu" class="main-menu hidden" aria-hidden="true">
+      <div class="menu-bg-vignette"></div>
+      <div class="menu-bg-scan"></div>
+      <div class="menu-wrap">
+        <div class="menu-brand">
+          <div class="menu-kicker">SOBREVIVÊNCIA PÓS-APOCALÍPTICA</div>
+          <h1 class="menu-title"><span>NEON</span> STRIKE <em>2.0</em></h1>
+          <p class="menu-sub">Manhattan em quarentena. Sobreviva, explore e lute.</p>
+        </div>
+        <nav class="menu-nav" aria-label="Menu principal">
+          <button id="menu-continue" class="menu-btn" type="button"><span class="menu-btn-main">Continuar</span><span class="menu-btn-sub">Carregar partida salva</span></button>
+          <button id="menu-newgame" class="menu-btn" type="button"><span class="menu-btn-main">Novo Jogo</span><span class="menu-btn-sub">Iniciar nova sobrevivência</span></button>
+          <button id="menu-chapters" class="menu-btn" type="button"><span class="menu-btn-main">Capítulos</span><span class="menu-btn-sub">Selecionar capítulo e dificuldade</span></button>
+          <button id="menu-settings" class="menu-btn" type="button"><span class="menu-btn-main">Configurações</span><span class="menu-btn-sub">Áudio, gráficos e controles</span></button>
+          <button id="menu-credits" class="menu-btn" type="button"><span class="menu-btn-main">Créditos</span><span class="menu-btn-sub">Equipe e recursos</span></button>
+          <button id="menu-exit" class="menu-btn" type="button"><span class="menu-btn-main">Sair</span><span class="menu-btn-sub">Voltar ao navegador</span></button>
+        </nav>
+        <div id="menu-status" class="menu-status hidden"></div>
+        <div class="menu-footer">WASD/Mouse/Toque · v2.0 Alpha</div>
+      </div>
+
+      <div id="menu-panel" class="menu-panel hidden" aria-hidden="true">
+        <div class="menu-panel-card">
+          <div class="menu-panel-head">
+            <h2 id="menu-panel-title">Configurações</h2>
+            <button id="menu-panel-close" class="inv-close" type="button">FECHAR</button>
+          </div>
+          <div id="menu-panel-body" class="menu-panel-body"></div>
+        </div>
+      </div>
+
+      <div id="menu-confirm" class="menu-panel hidden" aria-hidden="true">
+        <div class="menu-panel-card menu-confirm-card">
+          <div class="menu-panel-head"><h2 id="menu-confirm-title">Novo Jogo</h2></div>
+          <div class="menu-panel-body">
+            <p id="menu-confirm-text" class="menu-confirm-text"></p>
+            <div class="menu-confirm-actions">
+              <button id="menu-confirm-no" class="inv-action" type="button">Cancelar</button>
+              <button id="menu-confirm-yes" class="inv-action danger" type="button">Confirmar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="loading" class="loading">
+      <div class="loading-card">
+        <div class="loading-kicker">NEON STRIKE 2.0</div>
+        <h1>Inicializando zona de quarentena</h1>
+        <p id="loading-text">Preparando sistemas...</p>
+        <div class="loading-bar"><div class="loading-fill" id="loading-fill"></div></div>
+        <div class="loading-meta" id="loading-meta">0%</div>
+      </div>
+    </div>
+
+    <div id="error-screen" class="error-screen hidden">
+      <div class="loading-card error-card">
+        <div class="loading-kicker">ERRO DE INICIALIZAÇÃO</div>
+        <h2>Não foi possível iniciar o jogo</h2>
+        <p id="error-text"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.addEventListener('error', function(e){
+      var el=document.getElementById('error-screen'); var t=document.getElementById('error-text');
+      if(el&&t){ el.classList.remove('hidden'); t.textContent = (e.error && e.error.stack) ? e.error.stack : String(e.message || e); }
+    });
+    window.addEventListener('unhandledrejection', function(e){
+      var el=document.getElementById('error-screen'); var t=document.getElementById('error-text');
+      if(el&&t){ el.classList.remove('hidden'); t.textContent = (e.reason && e.reason.stack) ? e.reason.stack : String(e.reason || e); }
+    });
+  </script>
+  <script type="module" src="./src/main.js?v=etapa32"></script>
+</body>
+</html>
