@@ -29,7 +29,7 @@ public class MainActivity extends AppCompatActivity {
 
         assetLoader = new WebViewAssetLoader.Builder()
                 .setDomain("appassets.androidplatform.net")
-                .addPathHandler("/assets/www/", new WebViewAssetLoader.AssetsPathHandler(this))
+                .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
                 .build();
 
         webView = new WebView(this);
