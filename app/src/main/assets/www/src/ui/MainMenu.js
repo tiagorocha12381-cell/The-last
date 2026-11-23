@@ -242,7 +242,7 @@ export class MainMenu {
 
   _openCredits() {
     this.panelTitle.textContent = 'Créditos';
-    this.panelBody.innerHTML = `<div class="menu-credits"><p><strong>NEON STRIKE 2.0</strong><br>Protótipo de sobrevivência pós-apocalíptica em Three.js.</p><h3>Desenvolvimento</h3><p>Projeto Neon Strike 2.0 — desenvolvimento iterativo no ambiente OpenCode.</p><h3>Tecnologia</h3><p>Three.js (WebGL), JavaScript ES Modules, HTML/CSS.</p><h3>Assets de terceiros</h3><p>Veículos: Kenney (CC0). Zumbis: Quaternius (CC0). Árvores/natureza: assets GLB CC0 integrados no projeto. Demais elementos visuais: gerados proceduralmente no projeto.</p><h3>Aviso</h3><p>Build em desenvolvimento. Alguns sistemas podem exigir validação adicional em navegador e Android.</p></div>`;
+    this.panelBody.innerHTML = `<div class="menu-credits"><p><strong>THE LAST GENERATION</strong><br>Protótipo de sobrevivência pós-apocalíptica em Three.js.</p><h3>Desenvolvimento</h3><p>THE LAST GENERATION — sobrevivência pós-apocalíptica em desenvolvimento.</p><h3>Tecnologia</h3><p>Three.js (WebGL), JavaScript ES Modules, HTML/CSS.</p><h3>Assets de terceiros</h3><p>Veículos: Kenney (CC0). Zumbis: Quaternius (CC0). Vegetação: modelos procedurais do próprio projeto. Demais elementos visuais: gerados proceduralmente no projeto.</p><h3>Aviso</h3><p>Build em desenvolvimento. Alguns sistemas podem exigir validação adicional em navegador e Android.</p></div>`;
     this.panel.classList.remove('hidden'); this.panel.setAttribute('aria-hidden','false');
   }
 

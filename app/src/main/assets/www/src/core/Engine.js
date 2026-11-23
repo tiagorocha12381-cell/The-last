@@ -17,11 +17,15 @@ export class Engine {
     );
     this.camera.position.set(0, 5, 10);
 
+    const mobilePreset = this.qualityName === 'mobile';
     this.renderer = new THREE.WebGLRenderer({
       canvas,
-      antialias: true,
+      antialias: !mobilePreset,
       alpha: false,
       powerPreference: 'high-performance',
+      stencil: false,
+      depth: true,
+      preserveDrawingBuffer: false,
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.quality.maxPixelRatio));
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);

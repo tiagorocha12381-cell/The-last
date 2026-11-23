@@ -58,46 +58,9 @@ export class Props {
       done++;
       onProgress?.((done / vehicles.length) * 100, `Carregando veículos (${done}/${vehicles.length})`);
     }
-    // Upgrade procedural trees with existing nature GLBs for a more natural look
-    await this._upgradeTreesToGLB(onProgress);
+    // Keep procedural vegetation: the bundled nature GLBs were invalid 404 placeholders.
   }
 
-  async _upgradeTreesToGLB(onProgress) {
-    const files = ['assets/models/nature/tree-large.glb', 'assets/models/nature/tree-small.glb', 'assets/models/nature/tree_default.glb'];
-    const templates = [];
-    for (let i = 0; i < files.length; i++) {
-      try {
-        const obj = await this.assetLoader.loadGLTF(files[i]);
-        templates.push(obj);
-      } catch (e) {
-        console.warn('Tree GLB load failed, keeping procedural:', files[i], e);
-      }
-      onProgress?.(90 + (i + 1) / files.length * 10, 'Carregando vegetação');
-    }
-    if (!templates.length) return;
-    for (let i = 0; i < this.trees.length; i++) {
-      const t = this.trees[i];
-      const g = t.group;
-      // clear procedural children
-      while (g.children.length) {
-        const c = g.children[0]; g.remove(c);
-        c.traverse?.(n => { n.geometry?.dispose?.(); if (n.material) { (Array.isArray(n.material)?n.material:[n.material]).forEach(m=>m.dispose?.()); } });
-      }
-      const tpl = templates[i % templates.length];
-      const model = tpl.clone(true);
-      model.traverse(n => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; if (n.material) { n.material = n.material.clone(); if ('roughness' in n.material) n.material.roughness = Math.max(0.7, n.material.roughness ?? 0.8); if ('metalness' in n.material) n.material.metalness = Math.min(0.1, n.material.metalness ?? 0); n.material.needsUpdate = true; } } });
-      // normalize approximate size to fit previous scale intent
-      const box = new THREE.Box3().setFromObject(model);
-      const size = new THREE.Vector3(); box.getSize(size);
-      const h = size.y || 1;
-      const targetH = 4.0 * (g.scale.x || 1); // previous scale was applied to group
-      model.scale.setScalar(targetH / h);
-      g.scale.setScalar(1); // reset, baked into model
-      model.position.y = -box.min.y * (targetH / h);
-      g.add(model);
-      g.userData.animated = true;
-    }
-  }
 
   _placeGLBVehicle(obj, v) {
     obj.position.set(v.x, v.y, v.z);

@@ -54,6 +54,15 @@ export class SettingsSystem {
     let parsed = null;
     try { const raw = localStorage.getItem(KEY); if (raw) parsed = JSON.parse(raw); } catch (_) {}
     const s = deepMerge(DEFAULT_SETTINGS, parsed || {});
+    const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '');
+    if (isAndroid && !parsed?.graphics?.preset) {
+      s.graphics.preset = 'mobile';
+      s.graphics.shadows = false;
+      s.graphics.renderScale = 0.8;
+      s.graphics.renderDistance = 92;
+      s.graphics.effects = false;
+      s.graphics.fpsLimit = 30;
+    }
     // sanitize
     s.graphics.preset = ['mobile','medium','high','custom'].includes(s.graphics.preset) ? s.graphics.preset : 'medium';
     s.graphics.renderScale = clamp(Number(s.graphics.renderScale)||1, 0.6, 1.2);
@@ -117,7 +126,7 @@ export class SettingsSystem {
     const g = this.data.graphics;
     const baseName = g.preset === 'custom' ? 'medium' : g.preset;
     const base = { ...(QUALITY_PRESETS[baseName] || QUALITY_PRESETS.medium) };
-    if (g.preset === 'custom' || true) {
+    if (g.preset === 'custom') {
       base.shadows = !!g.shadows;
       base.fogFar = g.renderDistance;
       base.maxPixelRatio = clamp((base.maxPixelRatio || 1.5) * g.renderScale, 0.75, 2.5);

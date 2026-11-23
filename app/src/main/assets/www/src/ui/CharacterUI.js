@@ -26,9 +26,16 @@ export class CharacterUI {
     const p = this.progression.getState();
     const pct = Math.max(0, Math.min(100, (p.xp / p.xpToNext) * 100));
     this.summary.innerHTML = `
-      <div class="char-level">Nível ${p.level}</div>
-      <div class="char-xp-bar"><div class="char-xp-fill" style="width:${pct}%"></div></div>
-      <div class="char-xp-text">XP: ${p.xp} / ${p.xpToNext}</div>
+      <div class="char-reference-card">
+        <div class="char-reference-copy">
+          <strong>SOBREVIVENTE PRINCIPAL</strong>
+          <span>Referência visual oficial do protagonista. O modelo 3D em jogo continua sendo independente desta arte.</span>
+          <div class="char-level">Nível ${p.level}</div>
+          <div class="char-xp-bar"><div class="char-xp-fill" style="width:${pct}%"></div></div>
+          <div class="char-xp-text">XP: ${p.xp} / ${p.xpToNext}</div>
+        </div>
+        <img src="./assets/images/protagonist-portrait.webp" alt="Referência visual do protagonista">
+      </div>
     `;
     this.points.textContent = `Pontos: ${p.skillPoints}`;
     this.body.innerHTML = '';

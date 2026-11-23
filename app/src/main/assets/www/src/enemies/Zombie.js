@@ -24,8 +24,36 @@ export const ZOMBIE_TYPES = {
   aggressive:{ id:'aggressive',label:'Agressivo',  hp:70,  speed:1.3,  runSpeed:2.8, damage:12, attackRange:1.4,  attackCooldown:1.25,detectRange:15, fov:Math.PI*0.9,  loseRange:22, scale:1.02, color:0xffe0cc, aggression:1.35 },
 };
 
+
 const rand = (a,b)=>a+Math.random()*(b-a);
 const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+
+function heapPush(heap, node) {
+  let i = heap.length;
+  heap.push(node);
+  while (i > 0) {
+    const p = (i - 1) >> 1;
+    if (heap[p].f <= node.f) break;
+    heap[i] = heap[p]; i = p;
+  }
+  heap[i] = node;
+}
+function heapPop(heap) {
+  const first = heap[0];
+  const last = heap.pop();
+  if (heap.length) {
+    let i = 0;
+    while (true) {
+      let c = i * 2 + 1;
+      if (c >= heap.length) break;
+      if (c + 1 < heap.length && heap[c + 1].f < heap[c].f) c++;
+      if (heap[c].f >= last.f) break;
+      heap[i] = heap[c]; i = c;
+    }
+    heap[i] = last;
+  }
+  return first;
+}
 
 export class Zombie {
   constructor({ scene, collisions, modelTemplate, animations, type = 'common', position = new THREE.Vector3(), spawnPos = null, role = 'roam' }) {
@@ -123,6 +151,11 @@ export class Zombie {
     this.separation = new THREE.Vector3();
     this.suspicion = 0; // 0..1
     this.suspicionTarget = null;
+    // Cached local navigation: paths are rebuilt only when the target moves or the route is blocked.
+    this._navPath = [];
+    this._navTarget = null;
+    this._navRepathAt = 0;
+    this._navCellSize = 1.0;
 
     this.radius = 0.38 * this.typeDef.scale;
     this._tmpDir = new THREE.Vector3();
@@ -273,24 +306,170 @@ export class Zombie {
     }
   }
 
+  _findNavigationPath(target) {
+    const start = this.group.position;
+    const cell = this._navCellSize;
+    const margin = 6;
+    const minX = Math.max(-52, Math.floor((Math.min(start.x, target.x) - margin) / cell) * cell);
+    const minZ = Math.max(-52, Math.floor((Math.min(start.z, target.z) - margin) / cell) * cell);
+    const maxX = Math.min(52, Math.ceil((Math.max(start.x, target.x) + margin) / cell) * cell);
+    const maxZ = Math.min(52, Math.ceil((Math.max(start.z, target.z) + margin) / cell) * cell);
+    const cols = Math.max(1, Math.floor((maxX - minX) / cell) + 1);
+    const rows = Math.max(1, Math.floor((maxZ - minZ) / cell) + 1);
+    if (cols * rows > 2601) return [];
+
+    const indexAt = (x, z) => {
+      const c = clamp(Math.round((x - minX) / cell), 0, cols - 1);
+      const r = clamp(Math.round((z - minZ) / cell), 0, rows - 1);
+      return r * cols + c;
+    };
+    const worldAt = (i) => {
+      const c = i % cols, r = Math.floor(i / cols);
+      return { x: minX + c * cell, z: minZ + r * cell };
+    };
+    const blocked = new Uint8Array(cols * rows);
+    const boxes = this.collisions.boxes.filter(b => b.enabled !== false && 1.0 >= b.min.y && 1.0 <= b.max.y);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = minX + c * cell, z = minZ + r * cell;
+        for (const b of boxes) {
+          if (x >= b.min.x - this.radius - 0.12 && x <= b.max.x + this.radius + 0.12 &&
+              z >= b.min.z - this.radius - 0.12 && z <= b.max.z + this.radius + 0.12) {
+            blocked[r * cols + c] = 1; break;
+          }
+        }
+      }
+    }
+
+    const nearestFree = (origin) => {
+      const base = indexAt(origin.x, origin.z);
+      if (!blocked[base]) return base;
+      const bc = base % cols, br = Math.floor(base / cols);
+      for (let radius = 1; radius <= 5; radius++) {
+        let best = -1, bestD = Infinity;
+        for (let dz = -radius; dz <= radius; dz++) {
+          for (let dx = -radius; dx <= radius; dx++) {
+            if (Math.max(Math.abs(dx), Math.abs(dz)) !== radius) continue;
+            const c = bc + dx, r = br + dz;
+            if (c < 0 || r < 0 || c >= cols || r >= rows) continue;
+            const i = r * cols + c;
+            if (blocked[i]) continue;
+            const d = dx * dx + dz * dz;
+            if (d < bestD) { bestD = d; best = i; }
+          }
+        }
+        if (best >= 0) return best;
+      }
+      return -1;
+    };
+
+    const startI = nearestFree(start), goalI = nearestFree(target);
+    if (startI < 0 || goalI < 0) return [];
+    if (startI === goalI) return [];
+
+    const count = cols * rows;
+    const gScore = new Float32Array(count); gScore.fill(Infinity);
+    const parent = new Int32Array(count); parent.fill(-1);
+    const closed = new Uint8Array(count);
+    const heap = [];
+    const heuristic = (i) => {
+      const a = worldAt(i), b = worldAt(goalI);
+      const dx = Math.abs(a.x - b.x), dz = Math.abs(a.z - b.z);
+      return Math.max(dx, dz) + (Math.SQRT2 - 1) * Math.min(dx, dz);
+    };
+    gScore[startI] = 0;
+    heapPush(heap, { i: startI, f: heuristic(startI), g: 0 });
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+    let found = false, visits = 0;
+    while (heap.length && visits < 3200) {
+      const cur = heapPop(heap);
+      if (closed[cur.i] || cur.g > gScore[cur.i] + 0.0001) continue;
+      if (cur.i === goalI) { found = true; break; }
+      closed[cur.i] = 1; visits++;
+      const c = cur.i % cols, r = Math.floor(cur.i / cols);
+      for (const [dx, dz] of dirs) {
+        const nc = c + dx, nr = r + dz;
+        if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+        const ni = nr * cols + nc;
+        if (blocked[ni] || closed[ni]) continue;
+        if (dx && dz && (blocked[r * cols + nc] || blocked[nr * cols + c])) continue;
+        const ng = cur.g + (dx && dz ? Math.SQRT2 : 1);
+        if (ng >= gScore[ni]) continue;
+        gScore[ni] = ng; parent[ni] = cur.i;
+        heapPush(heap, { i: ni, g: ng, f: ng + heuristic(ni) });
+      }
+    }
+    if (!found) return [];
+    const indices = [];
+    for (let at = goalI; at !== startI && at >= 0; at = parent[at]) {
+      indices.push(at);
+      if (indices.length > count) return [];
+    }
+    indices.reverse();
+    const path = indices.map(i => {
+      const p = worldAt(i);
+      return new THREE.Vector3(p.x, start.y, p.z);
+    });
+    // Greedy smoothing: remove intermediate points when a straight segment is clear.
+    const smooth = [];
+    let anchor = start, i = 0;
+    while (i < path.length) {
+      let far = i;
+      for (let j = path.length - 1; j >= i; j--) {
+        if (!this.collisions.segmentBlocked(anchor, path[j], 1.0)) { far = j; break; }
+      }
+      smooth.push(path[far]);
+      anchor = path[far];
+      i = far + 1;
+    }
+    return smooth;
+  }
+
   _moveToward(target, dt, speed, separation = null) {
     const pos = this.group.position;
-    let dx = target.x - pos.x;
-    let dz = target.z - pos.z;
+    const directBlocked = this.collisions.segmentBlocked(pos, target, 1.0);
+    let moveTarget = target;
+    const now = performance.now();
+    if (directBlocked) {
+      const targetMoved = !this._navTarget || this._navTarget.distanceToSquared(target) > 2.25;
+      const pathBlocked = this._navPath.length && this.collisions.segmentBlocked(pos, this._navPath[0], 1.0);
+      if (targetMoved || pathBlocked || now >= this._navRepathAt) {
+        this._navPath = this._findNavigationPath(target);
+        this._navTarget = target.clone();
+        this._navRepathAt = now + 1100;
+      }
+      while (this._navPath.length && pos.distanceTo(this._navPath[0]) < 0.72) this._navPath.shift();
+      if (this._navPath.length) moveTarget = this._navPath[0];
+    } else {
+      this._navPath.length = 0;
+      this._navTarget = null;
+      this._navRepathAt = now + 600;
+    }
+
+    let dx = moveTarget.x - pos.x;
+    let dz = moveTarget.z - pos.z;
     const dist = Math.hypot(dx, dz);
-    if (dist < 0.001) return 0;
+    if (dist < 0.001) return Math.hypot(target.x - pos.x, target.z - pos.z);
     let nx = dx / dist, nz = dz / dist;
-    if (separation) { nx += separation.x * 0.8; nz += separation.z * 0.8; const l = Math.hypot(nx,nz)||1; nx/=l; nz/=l; }
+    if (separation) {
+      nx += separation.x * 0.55; nz += separation.z * 0.55;
+      const l = Math.hypot(nx,nz)||1; nx/=l; nz/=l;
+    }
     const desiredYaw = Math.atan2(nx, nz);
     let dyaw = desiredYaw - this.yaw;
     while (dyaw > Math.PI) dyaw -= Math.PI * 2;
     while (dyaw < -Math.PI) dyaw += Math.PI * 2;
     this.yaw += dyaw * Math.min(1, dt * (4.5 + this.typeDef.aggression));
     this.group.rotation.y = this.yaw;
-    const step = speed * this.personality * dt;
+    const step = Math.min(dist, speed * this.personality * dt);
+    const beforeX = pos.x, beforeZ = pos.z;
     pos.x += Math.sin(this.yaw) * step;
     pos.z += Math.cos(this.yaw) * step;
     this.collisions.resolveCircle(pos, this.radius);
+    const moved = Math.hypot(pos.x - beforeX, pos.z - beforeZ);
+    if (moved < step * 0.18 && directBlocked) {
+      this._navRepathAt = 0;
+    }
     return Math.hypot(target.x - pos.x, target.z - pos.z);
   }
 

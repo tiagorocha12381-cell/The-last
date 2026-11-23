@@ -603,3 +603,61 @@ body { font-size: calc(16px * var(--text-scale, 1)); }
 .stealth-indicator.suspicious { color: #e6d27a; border-color: rgba(220,190,80,.4); background: rgba(50,45,20,.5); }
 .stealth-indicator.investigate { color: #f0c36a; border-color: rgba(240,170,70,.4); background: rgba(55,40,18,.5); }
 .stealth-indicator.detected { color: #ff9a8a; border-color: rgba(255,100,80,.45); background: rgba(60,25,20,.55); }
+
+
+/* THE LAST GENERATION — identity assets */
+.hud-brand-logo {
+  display:block;
+  width:clamp(42px, 5vw, 66px);
+  height:clamp(42px, 5vw, 66px);
+  object-fit:contain;
+  border-radius:10px;
+  filter:drop-shadow(0 3px 12px rgba(0,0,0,.55));
+}
+.brand { display:flex; align-items:center; gap:10px; }
+.menu-logo {
+  display:block;
+  width:min(310px, 68vw);
+  max-height:34vh;
+  object-fit:contain;
+  border-radius:18px;
+  filter:drop-shadow(0 14px 34px rgba(0,0,0,.55));
+  border:1px solid rgba(255,255,255,.12);
+}
+.loading-logo {
+  display:block;
+  width:min(190px, 48vw);
+  max-height:190px;
+  object-fit:contain;
+  margin:0 auto 16px;
+  border-radius:14px;
+}
+.menu-brand { display:flex; flex-direction:column; align-items:flex-start; gap:8px; }
+.char-reference-card {
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) minmax(100px, 38%);
+  gap:12px;
+  align-items:center;
+  margin:0 0 14px;
+  padding:10px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;
+  background:linear-gradient(135deg,rgba(45,39,34,.72),rgba(12,15,19,.82));
+}
+.char-reference-card img {
+  display:block;
+  width:100%;
+  max-height:180px;
+  object-fit:cover;
+  object-position:center 25%;
+  border-radius:8px;
+}
+.char-reference-copy strong { display:block; color:#f0e7dc; letter-spacing:.08em; font-size:12px; }
+.char-reference-copy span { display:block; color:#bcb3a8; font-size:11px; line-height:1.4; margin-top:5px; }
+@media (max-height:520px) {
+  .menu-wrap { gap:14px; }
+  .menu-logo { width:min(210px, 34vh); max-height:26vh; }
+  .menu-nav { gap:6px; }
+  .menu-btn { padding:9px 14px; }
+  .loading-logo { width:112px; max-height:112px; margin-bottom:8px; }
+}

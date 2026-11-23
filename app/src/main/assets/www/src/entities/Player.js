@@ -171,6 +171,26 @@ export class Player {
     add(new THREE.BoxGeometry(0.05, 0.45, 0.03), leather, -0.14, 1.12, -0.14);
     add(new THREE.BoxGeometry(0.12, 0.08, 0.10), this._mat(0x6a6258,0.9,0.03), 0.22, 1.18, -0.20); // side pouch
 
+    // Hood and layered survival clothing details, matching the supplied protagonist reference.
+    const hood = add(new THREE.SphereGeometry(0.205, 14, 12), jacketDark, 0, 1.56, -0.115, 1.08, 0.88, 0.82);
+    hood.rotation.x = -0.12;
+    add(new THREE.TorusGeometry(0.175, 0.035, 8, 18), jacket, 0, 1.49, -0.015, 1, 1, 0.82, Math.PI / 2, 0, 0);
+    // Jacket front panels and worn seams.
+    add(new THREE.BoxGeometry(0.018, 0.42, 0.018), leather, -0.12, 1.10, 0.166);
+    add(new THREE.BoxGeometry(0.018, 0.42, 0.018), leather, 0.12, 1.10, 0.166);
+    // Utility pockets and stitched-looking flap details.
+    for (const side of [-1, 1]) {
+      add(new THREE.BoxGeometry(0.14, 0.16, 0.055), jacketDark, side * 0.19, 0.99, 0.17);
+      add(new THREE.BoxGeometry(0.15, 0.035, 0.06), leather, side * 0.19, 1.075, 0.176);
+      add(new THREE.BoxGeometry(0.045, 0.30, 0.035), leather, side * 0.19, 1.28, -0.17);
+    }
+    // Backpack straps over the shoulders.
+    for (const side of [-1, 1]) {
+      const strap = add(new THREE.BoxGeometry(0.075, 0.48, 0.045), leather, side * 0.245, 1.25, 0.125);
+      strap.rotation.z = side * -0.10;
+      add(new THREE.BoxGeometry(0.085, 0.055, 0.052), metal, side * 0.245, 1.10, 0.153);
+    }
+
     this.group.add(this.model);
   }
 
