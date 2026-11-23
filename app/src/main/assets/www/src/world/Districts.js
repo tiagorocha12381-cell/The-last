@@ -1,8 +1,37 @@
 import * as THREE from 'three';
 import { TextureFactory } from '../core/TextureFactory.js';
 
-function makeBox(w,h,d,mat){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.castShadow=true; m.receiveShadow=true; return m; }
-function makePlane(w,h,mat){ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat); m.rotation.x=-Math.PI/2; m.receiveShadow=true; return m; }
+// Reutiliza geometrias estáticas iguais entre os distritos. Antes, cada peça
+// criava uma geometria nova mesmo quando tinha exatamente as mesmas medidas.
+const boxGeometryCache = new Map();
+const planeGeometryCache = new Map();
+
+function geometryKey(...values) {
+  return values.map(v => Number(v).toFixed(3)).join(':');
+}
+
+function getBoxGeometry(w, h, d) {
+  const key = geometryKey(w, h, d);
+  let geometry = boxGeometryCache.get(key);
+  if (!geometry) {
+    geometry = new THREE.BoxGeometry(w, h, d);
+    boxGeometryCache.set(key, geometry);
+  }
+  return geometry;
+}
+
+function getPlaneGeometry(w, h) {
+  const key = geometryKey(w, h);
+  let geometry = planeGeometryCache.get(key);
+  if (!geometry) {
+    geometry = new THREE.PlaneGeometry(w, h);
+    planeGeometryCache.set(key, geometry);
+  }
+  return geometry;
+}
+
+function makeBox(w,h,d,mat){ const m=new THREE.Mesh(getBoxGeometry(w,h,d),mat); m.castShadow=true; m.receiveShadow=true; return m; }
+function makePlane(w,h,mat){ const m=new THREE.Mesh(getPlaneGeometry(w,h),mat); m.rotation.x=-Math.PI/2; m.receiveShadow=true; return m; }
 
 export class Districts {
   constructor(scene, collisions, interactionSystem, inventory) {
@@ -11,6 +40,7 @@ export class Districts {
     this.interactionSystem = interactionSystem;
     this.inventory = inventory;
     this.tex = new TextureFactory();
+    this.materialCache = new Map();
     this.group = new THREE.Group();
     this.group.name = 'Districts';
     this.scene.add(this.group);
@@ -20,9 +50,37 @@ export class Districts {
   }
 
   _mat(texDef, extra={}){
-    const m = new THREE.MeshStandardMaterial({ map:texDef.map, roughnessMap:texDef.roughnessMap, normalMap:texDef.normalMap, roughness:extra.roughness??0.94, metalness:extra.metalness??0.03, color:extra.color??0xffffff });
-    if (texDef.emissiveMap) { m.emissive=new THREE.Color(0xffe6b0); m.emissiveMap=texDef.emissiveMap; m.emissiveIntensity=extra.emissiveIntensity??0.6; }
+    const roughness = extra.roughness ?? 0.94;
+    const metalness = extra.metalness ?? 0.03;
+    const color = extra.color ?? 0xffffff;
+    const emissiveIntensity = extra.emissiveIntensity ?? 0.6;
+    const key = [
+      texDef.map?.uuid || '', texDef.roughnessMap?.uuid || '',
+      texDef.normalMap?.uuid || '', texDef.emissiveMap?.uuid || '',
+      roughness, metalness, color, emissiveIntensity
+    ].join('|');
+    let m = this.materialCache.get(key);
+    if (m) return m;
+    m = new THREE.MeshStandardMaterial({
+      map:texDef.map, roughnessMap:texDef.roughnessMap,
+      normalMap:texDef.normalMap, roughness, metalness, color
+    });
+    if (texDef.emissiveMap) {
+      m.emissive = new THREE.Color(0xffe6b0);
+      m.emissiveMap = texDef.emissiveMap;
+      m.emissiveIntensity = emissiveIntensity;
+    }
+    this.materialCache.set(key, m);
     return m;
+  }
+
+  _sharedMaterial(key, params){
+    let material = this.materialCache.get(key);
+    if (!material) {
+      material = new THREE.MeshStandardMaterial(params);
+      this.materialCache.set(key, material);
+    }
+    return material;
   }
 
   _addRegion(cfg){
@@ -51,9 +109,9 @@ export class Districts {
     const yBase=0.18;
     const facade=this._mat(tex,{roughness:0.92,emissiveIntensity:0.55});
     const side=this._mat(sideTex||tex,{roughness:0.94,emissiveIntensity:0.4});
-    const roofMat=new THREE.MeshStandardMaterial({color:roof,roughness:0.98,metalness:0.05});
+    const roofMat=this._sharedMaterial(`roof:${roof}`,{color:roof,roughness:0.98,metalness:0.05});
     const baseMat=this._mat(this.tex.concrete(2,1,'#6e7075'),{roughness:0.96});
-    const dark=new THREE.MeshStandardMaterial({color:0x3b4046,roughness:0.85,metalness:0.1});
+    const dark=this._sharedMaterial('district-parapet-dark',{color:0x3b4046,roughness:0.85,metalness:0.1});
     const baseH=0.7, bodyH=h-baseH-0.35;
     const base=makeBox(w+0.25,baseH,d+0.25,baseMat); base.position.set(x,yBase+baseH/2,z); region.group.add(base);
     const mats=[side,side,roofMat,baseMat,facade,side];
@@ -61,7 +119,7 @@ export class Districts {
     const top=makeBox(w+0.5,0.35,d+0.5,roofMat); top.position.set(x,yBase+h-0.175,z); region.group.add(top);
     const parap=makeBox(w+0.55,0.5,d+0.55,dark); parap.position.set(x,yBase+h+0.1,z); region.group.add(parap);
     // ledges
-    const ledgeMat=new THREE.MeshStandardMaterial({color:0x646a72,roughness:0.82,metalness:0.12});
+    const ledgeMat=this._sharedMaterial('district-ledge',{color:0x646a72,roughness:0.82,metalness:0.12});
     const n=Math.max(2,Math.floor(bodyH/3.2));
     for(let i=1;i<=n;i++){ const ly=yBase+baseH+(i*bodyH)/(n+1); const l=makeBox(w+0.35,0.1,d+0.35,ledgeMat); l.position.set(x,ly,z); region.group.add(l); }
     if(sign) this._sign(region, x, yBase+baseH+1.2, z+d/2+0.26, sign);

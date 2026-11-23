@@ -65,6 +65,14 @@ async function boot() {
   try {
     setLoading(5, 'Inicializando renderizador...');
     const canvas = document.getElementById('game-canvas');
+    const settingsSystem = new SettingsSystem();
+
+    // Carrega a qualidade antes de criar o motor e construir o mundo.
+    const initialQuality = settingsSystem.getEffectiveQuality();
+    GAME_CONFIG.quality = initialQuality.name === 'custom'
+      ? 'medium'
+      : initialQuality.name;
+
     const engine = new Engine(canvas);
 
     setLoading(15, 'Preparando sistemas...');
@@ -86,7 +94,7 @@ async function boot() {
     inventory.onChange = (items) => { _invOnChange?.(items); renderQuickbar(); saveSystem.save({ inventory: inventory.serialize() }); };
 
     const saveSystem = new SaveSystem();
-    const settingsSystem = new SettingsSystem();
+
     // Restore inventory from save (if present)
     const _saved = saveSystem.get();
     if (_saved?.inventory) inventory.loadState(_saved.inventory);
